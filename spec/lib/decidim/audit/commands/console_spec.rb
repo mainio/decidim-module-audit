@@ -41,7 +41,7 @@ describe "Console" do
     it "interrupts cleanly" do
       lines = []
       Open3.popen2("bundle exec rails console -e test") do |stdin, stdout, wait_thr|
-        sleep 1
+        sleep 3
         Process.kill("INT", wait_thr.pid)
         sleep 1
         stdin.close
