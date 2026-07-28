@@ -115,7 +115,7 @@ bundle exec rails decidim:audit:export_logs[2026-07-01T00:00:00Z,custom-audit.lo
 ```
 
 This would export all logs that have been recorded at or after the time
-`2026-07-01T00:00:00Z` to a fine named `custom-audit.log`.
+`2026-07-01T00:00:00Z` to a file named `custom-audit.log`.
 
 You can also export all logs to a custom file by leaving the first argument
 empty as follows:
