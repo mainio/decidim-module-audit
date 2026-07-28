@@ -20,4 +20,6 @@ jobs:
     needs: build_app
     name: Tests
     uses: mainio/gha-decidim-module/.github/workflows/ci_rspec.yml@main
+    with:
+      db-migrate: true
     secrets: inherit
