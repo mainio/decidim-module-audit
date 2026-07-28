@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+require "decidim/dev"
+
+ENV["ENGINE_ROOT"] = File.dirname(__dir__)
+
+# The engine definition is needed because we load the custom test railtie which
+# calls `paths` where this is already needed. Normally this would be defined by
+# base_spec_helper.
+ENV["RAILS_ENV"] ||= "test"
+
+Decidim::Dev.dummy_app_path = File.expand_path(File.join(__dir__, "..", "spec", "decidim_dummy_app"))
+
+require "decidim/audit/test/railtie"
+require "decidim/dev/test/base_spec_helper"
