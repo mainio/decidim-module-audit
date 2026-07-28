@@ -41,7 +41,11 @@ describe "Console" do
     it "interrupts cleanly" do
       lines = []
       Open3.popen2("bundle exec rails console -e test") do |stdin, stdout, wait_thr|
-        sleep 3
+        # Note that the wait time here needs to be significant for it to work
+        # for new console sessions. Most often this fails when starting a brand
+        # new console session and running this spec straight away in that
+        # session.
+        sleep 10
         Process.kill("INT", wait_thr.pid)
         sleep 1
         stdin.close
