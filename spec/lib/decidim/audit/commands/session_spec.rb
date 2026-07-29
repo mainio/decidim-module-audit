@@ -171,20 +171,40 @@ describe Decidim::Audit::Commands::Session do
     end
 
     context "with correct credentials" do
-      before { session.login }
-
       it "sets the user" do
+        session.login
         expect(session.user).to eq(admin)
+      end
+
+      it "logs the login attempt and the successful login" do
+        expect { session.login }.to change(Decidim::Audit::Log, :count).by(2)
+
+        logs = Decidim::Audit::Log.order(:id).last(2)
+        expect(logs[0].channel).to eq("authentication")
+        expect(logs[0].event).to eq("console_attempt")
+        expect(logs[0].resource).to eq(admin)
+        expect(logs[1].channel).to eq("authentication")
+        expect(logs[1].event).to eq("console_success")
+        expect(logs[1].details).to match("scope" => "admin")
+        expect(logs[1].resource).to eq(admin)
       end
     end
 
     context "with incorrect email" do
       let(:provided_email) { "unexisting@example.org" }
 
-      before { session.login }
-
       it "sets the user" do
+        session.login
         expect(session.user).to be_nil
+      end
+
+      it "logs the login attempt" do
+        expect { session.login }.to change(Decidim::Audit::Log, :count).by(1)
+
+        log = Decidim::Audit::Log.order(:id).last
+        expect(log.channel).to eq("authentication")
+        expect(log.event).to eq("console_attempt")
+        expect(log.resource).to be_nil
       end
     end
 
@@ -202,11 +222,29 @@ describe Decidim::Audit::Commands::Session do
   describe "#logout" do
     include_context "with stubbed input and output"
 
-    before { session.login }
+    context "when the user is logged in" do
+      before { session.login }
 
-    it "sets the user as nil" do
-      session.logout
-      expect(session.user).to be_nil
+      it "sets the user as nil" do
+        session.logout
+        expect(session.user).to be_nil
+      end
+
+      it "logs the logout event" do
+        expect { session.logout }.to change(Decidim::Audit::Log, :count).by(1)
+
+        log = Decidim::Audit::Log.order(:id).last
+        expect(log.channel).to eq("authentication")
+        expect(log.event).to eq("console_logout")
+        expect(log.details).to match("scope" => "admin")
+        expect(log.resource).to eq(admin)
+      end
+    end
+
+    context "when the user is not logged out" do
+      it "does not log the logout event" do
+        expect { session.logout }.not_to change(Decidim::Audit::Log, :count)
+      end
     end
   end
 end
