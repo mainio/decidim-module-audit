@@ -4,7 +4,8 @@ require "spec_helper"
 require "decidim/audit/commands/session"
 
 describe Decidim::Audit::Commands::Session do
-  let(:session) { described_class.new }
+  let(:session) { described_class.new(suppress_logs:) }
+  let(:suppress_logs) { false }
 
   let!(:admin) { create(:admin, email:, password:, password_confirmation: password) }
   let(:email) { "system@example.org" }
@@ -31,6 +32,19 @@ describe Decidim::Audit::Commands::Session do
     end
   end
 
+  shared_context "with stubbed logger" do
+    let(:logger) do
+      Logger.new(logdev).tap do |logger|
+        logger.level = Logger::DEBUG
+      end
+    end
+    let(:logdev) { StringIO.new }
+
+    before do
+      allow(ActiveRecord::Base).to receive(:logger).and_return(logger)
+    end
+  end
+
   shared_examples "working console login" do |tty_mode: false|
     let(:expected_output) do
       if tty_mode
@@ -52,6 +66,18 @@ describe Decidim::Audit::Commands::Session do
         subject
         output.rewind
         expect(output.read.strip).to eq(expected_output)
+      end
+
+      context "when suppressing logs" do
+        let(:suppress_logs) { true }
+
+        include_context "with stubbed logger"
+
+        it "suppresses the DB log messages" do
+          subject
+          logdev.rewind
+          expect(logdev.read).to eq("")
+        end
       end
     end
 
@@ -134,6 +160,16 @@ describe Decidim::Audit::Commands::Session do
 
             expect { |block| described_class.wrap(&block) }.to yield_with_no_args
           end
+        end
+      end
+
+      context "when log level is set to debug" do
+        include_context "with stubbed logger"
+
+        it "suppresses the DB log messages" do
+          described_class.wrap {} # rubocop:disable Lint/EmptyBlock
+          logdev.rewind
+          expect(logdev.read).to eq("")
         end
       end
     end
@@ -239,9 +275,21 @@ describe Decidim::Audit::Commands::Session do
         expect(log.details).to match("scope" => "admin")
         expect(log.resource).to eq(admin)
       end
+
+      context "when suppressing logs" do
+        let(:suppress_logs) { true }
+
+        include_context "with stubbed logger"
+
+        it "suppresses the DB log messages" do
+          session.logout
+          logdev.rewind
+          expect(logdev.read).to eq("")
+        end
+      end
     end
 
-    context "when the user is not logged out" do
+    context "when the user is not logged in" do
       it "does not log the logout event" do
         expect { session.logout }.not_to change(Decidim::Audit::Log, :count)
       end
