@@ -31,6 +31,7 @@ module Decidim
 
           # Models
           ::Decidim::User.include(Auditable)
+          ::Decidim::System::Admin.include(Auditable) if Decidim.module_installed?(:system)
           ::Decidim::Authorization.class_eval do
             include(Auditable)
 
