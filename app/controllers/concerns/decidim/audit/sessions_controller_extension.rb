@@ -15,7 +15,22 @@ module Decidim
       private
 
       def audit_log_attempt
-        resource = Decidim::User.find_by(email: sign_in_params[:email])
+        auth_params = sign_in_params
+
+        auth_keys = resource_class.authentication_keys
+        auth_keys = auth_keys.keys if auth_keys.respond_to?(:keys)
+        resource_params = auth_params.slice(*auth_keys)
+        resource_params.merge!(env: { "decidim.current_organization" => current_organization }.compact.presence)
+        resource_params.compact!
+
+        # With the API users in v0.31.0 and above, the authentication keys
+        # contain both `key` and `secret` but if we want to log the resource for
+        # the authentication attempt, the resource should be searched for using
+        # only the "username" (i.e. the `key`) of the record.
+        resource_params.slice!(:secret) if resource_name == :api_user
+
+        mapping = ::Devise.mappings[resource_name]
+        resource = mapping.to.find_for_database_authentication(resource_params)
 
         Decidim::Audit.log(
           channel: "authentication",
