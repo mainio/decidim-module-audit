@@ -29,10 +29,19 @@ This module serves for:
 - Successful logins (normal, system, OmniAuth, console)
 - Failed logins (normal, system, OmniAuth, console)
 - Logouts (normal, system, console)
-- User record changes (create, update, and destroy)
-  * Note that if the `before_` and `after_` callbacks are omitted, these changes
-    are not logged, so it is suggested to add additional logging for these e.g.
-    through PGAudit.
+- User record changes (create, update, and destroy) [Note 1]
+- System admin record changes (create, update, and destroy) [Note 1]
+- Authorization record changes (create, update, and destroy) [Note 1, Note 2]
+
+[Note 1] Note that if the `before_` and `after_` callbacks are omitted when
+modifying the records, the changes related to create, update, and destroy events
+are not logged, so it is suggested to add additional logging for these e.g.
+through PGAudit.
+
+[Note 2] The sensitive metadata in fields `metadata` and `verification_metadata`
+are excluded from the audit records as there may be different retention
+requirements than the audit log records. If this data needs to be stored in
+audit logs, it is recommended to add additional logging e.g. through PGAudit.
 
 ## Important note
 
