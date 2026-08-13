@@ -42,6 +42,10 @@ module Decidim
           @ip = ip
         end
 
+        def ==(other)
+          [:type, :identifier, :ip].all? { |key| public_send(key) == other.public_send(key) }
+        end
+
         def id
           [type, identifier]
         end

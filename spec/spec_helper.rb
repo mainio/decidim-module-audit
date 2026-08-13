@@ -3,6 +3,7 @@
 require "decidim/dev"
 
 ENV["ENGINE_ROOT"] = File.dirname(__dir__)
+ENV["DISABLE_SPRING"] = "true"
 
 # The engine definition is needed because we load the custom test railtie which
 # calls `paths` where this is already needed. Normally this would be defined by

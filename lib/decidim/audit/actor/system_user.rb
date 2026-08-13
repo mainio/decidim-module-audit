@@ -34,6 +34,10 @@ module Decidim
           @gecos = gecos
         end
 
+        def ==(other)
+          [:uid, :gid, :name, :gecos].all? { |key| public_send(key) == other.public_send(key) }
+        end
+
         def id
           [uid, gid, name]
         end

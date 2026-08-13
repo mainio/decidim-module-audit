@@ -134,6 +134,8 @@ describe Decidim::Audit do
       expect(subject.level).to eq(level.to_s)
       expect(subject.details).to match(details.stringify_keys)
       expect(subject.actor).to be_a(Decidim::Audit::Actor::Visitor)
+      expect(subject.actor_type).to eq("visitor")
+      expect(subject.actor_roles).to be_nil
       expect(subject.request_details).to match(request_details.stringify_keys)
       expect(subject.resource).to eq(resource)
       expect(subject.resource_changes).to eq(resource_changes.stringify_keys)
@@ -152,6 +154,8 @@ describe Decidim::Audit do
         expect(subject.level).to eq("info")
         expect(subject.details).to be_nil
         expect(subject.actor).to be_a(Decidim::Audit::Actor::SystemUser)
+        expect(subject.actor_type).to eq("system_user")
+        expect(subject.actor_roles).to be_nil
         expect(subject.request_details).to be_nil
         expect(subject.resource).to be_nil
         expect(subject.resource_changes).to be_nil
@@ -198,6 +202,8 @@ describe Decidim::Audit do
 
         it "fetches the actor from the request automatically" do
           expect(subject.actor).to eq(current_user)
+          expect(subject.actor_type).to eq("organization_user")
+          expect(subject.actor_roles).to be_nil
         end
 
         it "fetches the request details from the request automatically" do
@@ -216,14 +222,67 @@ describe Decidim::Audit do
       end
 
       context "with current actor" do
-        let(:current_user) { create(:user, :confirmed, organization:) }
-
         before do
-          described_class.with_actor(current_user) { subject }
+          try(:prepare_test)
+          described_class.with_actor(current_actor) { subject }
         end
 
-        it "fetches the current actor automatically" do
-          expect(subject.actor).to eq(current_user)
+        context "with organization user" do
+          let(:current_actor) { create(:user, :confirmed, organization:) }
+
+          it "sets the actor details automatically" do
+            expect(subject.actor).to eq(current_actor)
+            expect(subject.actor_type).to eq("organization_user")
+            expect(subject.actor_roles).to be_nil
+          end
+
+          context "with account roles and participatory space roles" do
+            let(:current_actor) { create(:user, :confirmed, :user_manager, organization:) }
+            let(:space1) { create(:assembly, :published, organization:) }
+            let(:space2) { create(:participatory_process, :published, organization:) }
+            let(:role1) { create(:assembly_user_role, assembly: space1, user: current_actor, role: "collaborator") }
+            let(:role2) { create(:participatory_process_user_role, participatory_process: space2, user: current_actor, role: "moderator") }
+
+            def prepare_test
+              role1 && role2
+            end
+
+            it "sets the actor details automatically" do
+              expect(subject.actor).to eq(current_actor)
+              expect(subject.actor_type).to eq("organization_user")
+              expect(subject.actor_roles).to eq(["user_manager", "assembly_#{space1.id}_collaborator", "process_#{space2.id}_moderator"])
+            end
+          end
+        end
+
+        context "with organization admin" do
+          let(:current_actor) { create(:user, :confirmed, :admin, organization:) }
+
+          it "sets the actor details automatically" do
+            expect(subject.actor).to eq(current_actor)
+            expect(subject.actor_type).to eq("organization_admin")
+            expect(subject.actor_roles).to be_nil
+          end
+        end
+
+        context "with system user" do
+          let(:current_actor) { build(:audit_system_user) }
+
+          it "sets the actor details automatically" do
+            expect(subject.actor).to eq(current_actor)
+            expect(subject.actor_type).to eq("system_user")
+            expect(subject.actor_roles).to be_nil
+          end
+        end
+
+        context "with visitor" do
+          let(:current_actor) { build(:audit_visitor) }
+
+          it "sets the actor details automatically" do
+            expect(subject.actor).to eq(current_actor)
+            expect(subject.actor_type).to eq("visitor")
+            expect(subject.actor_roles).to be_nil
+          end
         end
       end
     end

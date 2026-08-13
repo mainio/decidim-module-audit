@@ -10,6 +10,8 @@ class CreateDecidimAuditLogs < ActiveRecord::Migration[7.0]
       t.string :message
       t.jsonb :details
       t.string :actor
+      t.string :actor_type
+      t.jsonb :actor_roles
       t.jsonb :request_details
       t.string :resource_type
       t.integer :resource_id
@@ -19,6 +21,7 @@ class CreateDecidimAuditLogs < ActiveRecord::Migration[7.0]
       t.index :channel
       t.index :event
       t.index :actor
+      t.index :actor_type
       t.index [:resource_type, :resource_id]
     end
 

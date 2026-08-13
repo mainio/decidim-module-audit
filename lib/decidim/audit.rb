@@ -10,6 +10,7 @@ module Decidim
     autoload :Actor, "decidim/audit/actor"
     autoload :Request, "decidim/audit/request"
     autoload :Logger, "decidim/audit/logger"
+    autoload :Resolver, "decidim/audit/resolver"
 
     class << self
       attr_reader :current_request
@@ -48,6 +49,8 @@ module Decidim
         resource: nil,
         resource_changes: nil
       )
+        actor_details = Decidim::Audit::Resolver::ActorDetails.for(actor)
+
         Decidim::Audit::Log.create!(
           organization:,
           level:,
@@ -56,6 +59,8 @@ module Decidim
           message:,
           details:,
           actor: actor&.to_gid&.to_s,
+          actor_type: actor_details.type,
+          actor_roles: actor_details.roles,
           request_details:,
           resource:,
           resource_changes:

@@ -1,9 +1,29 @@
 # frozen_string_literal: true
 
-require "decidim/components/namer"
-require "decidim/core/test/factories"
-
 FactoryBot.define do
+  factory :audit_system_user, class: "Decidim::Audit::Actor::SystemUser" do
+    skip_create
+    initialize_with do
+      new(
+        rand(1000..1100),
+        rand(2000..2100),
+        Faker::Internet.username,
+        Faker::Name.name
+      )
+    end
+  end
+
+  factory :audit_visitor, class: "Decidim::Audit::Actor::Visitor" do
+    skip_create
+    initialize_with do
+      new(
+        "S",
+        SecureRandom.uuid,
+        Faker::Internet.public_ip_v4_address
+      )
+    end
+  end
+
   factory :audit_log, class: "Decidim::Audit::Log" do
     transient do
       skip_injection { false }
@@ -26,24 +46,11 @@ FactoryBot.define do
     end
 
     trait :with_visitor_actor do
-      actor do
-        Decidim::Audit::Actor::Visitor.new(
-          "S",
-          SecureRandom.uuid,
-          Faker::Internet.public_ip_v4_address
-        ).to_gid
-      end
+      actor { build(:audit_visitor).to_gid }
     end
 
     trait :with_system_actor do
-      actor do
-        Decidim::Audit::Actor::SystemUser.new(
-          rand(1000..1100),
-          rand(2000..2100),
-          Faker::Internet.username,
-          Faker::Name.name
-        ).to_gid
-      end
+      actor { build(:audit_system_user).to_gid }
     end
 
     trait :with_request do
