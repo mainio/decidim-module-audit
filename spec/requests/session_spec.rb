@@ -95,6 +95,10 @@ describe "Session" do
       log = Decidim::Audit::Log.find_by(channel: "authentication", event: "attempt")
       expect(log.level).to eq("info")
       expect(log.resource).to eq(user)
+
+      log = Decidim::Audit::Log.find_by(channel: "decidim_users", event: "update")
+      expect(log.resource).to eq(user)
+      expect(log.actor).to eq(user)
     end
 
     it "logs the successful login" do
@@ -140,6 +144,10 @@ describe "Session" do
       expect(log.level).to eq("info")
       expect(log.details).to match("scope" => "user")
       expect(log.resource).to eq(user)
+
+      log = Decidim::Audit::Log.find_by(channel: "decidim_users", event: "update")
+      expect(log.resource).to eq(user)
+      expect(log.actor).to eq(user)
     end
   end
 

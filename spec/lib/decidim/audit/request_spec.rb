@@ -84,10 +84,34 @@ describe Decidim::Audit::Request do
       end
     end
 
+    context "with memoized visitor and logged in user" do
+      let(:user) { nil }
+
+      it "returns the user when set" do
+        expect(instance.actor).to be_a(Decidim::Audit::Actor::Visitor)
+
+        logged_in_user = build(:user, :confirmed, organization:)
+        allow(warden).to receive(:user).with(scope: :user).and_return(logged_in_user)
+        expect(instance.actor).to eq(logged_in_user)
+      end
+    end
+
     context "without warden" do
       let(:request_env) { {} }
 
       it { is_expected.to be_a(Decidim::Audit::Actor::Visitor) }
+    end
+  end
+
+  describe "#visitor" do
+    subject { instance.visitor }
+
+    it { is_expected.to be_a(Decidim::Audit::Actor::Visitor) }
+
+    it "sets the correct details for the visitor" do
+      expect(subject.type).to eq("S")
+      expect(subject.identifier).to eq(session_id)
+      expect(subject.ip).to eq(remote_ip)
     end
   end
 

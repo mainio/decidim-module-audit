@@ -15,7 +15,11 @@ module Decidim
       end
 
       def actor
-        @actor ||= warden&.user(scope: :user) || Decidim::Audit::Actor::Visitor.from_request(req)
+        warden&.user(scope: :user) || visitor
+      end
+
+      def visitor
+        @visitor ||= Decidim::Audit::Actor::Visitor.from_request(req)
       end
 
       def details
