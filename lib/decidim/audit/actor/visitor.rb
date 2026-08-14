@@ -11,43 +11,48 @@ module Decidim
 
         class << self
           def from_request(request)
-            type, identifier =
+            type, identifier, uuid =
               if request.session
                 [TYPE_SESSION, request.session.id]
               else
-                [TYPE_REQUEST, request.requestid]
+                [TYPE_REQUEST, request.requestid, request.uuid]
               end
 
-            new(type, identifier, request.remote_ip)
+            new(type, identifier, uuid, request.remote_ip)
           end
 
           def find(id, params = {})
             raise InvalidIdError unless id.is_a?(Array)
-            raise InvalidIdError unless id.length == 2
+            raise InvalidIdError unless (2..3).include?(id.length)
 
-            type, identifier = id
+            type, identifier, uuid = id
             raise InvalidIdError unless type.is_a?(String)
             raise InvalidIdError unless type.in?([TYPE_SESSION, TYPE_REQUEST])
             raise InvalidIdError if identifier.blank?
 
-            new(type, identifier, params[:ip])
+            new(type, identifier, uuid, params[:ip])
           end
         end
 
-        attr_reader :type, :identifier, :ip
+        attr_reader :type, :identifier, :uuid, :ip
 
-        def initialize(type, identifier, ip)
+        def initialize(type, identifier, uuid, ip)
           @type = type
           @identifier = identifier
+          @uuid = uuid if type == TYPE_REQUEST
           @ip = ip
         end
 
         def ==(other)
-          [:type, :identifier, :ip].all? { |key| public_send(key) == other.public_send(key) }
+          [:type, :identifier, :uuid, :ip].all? { |key| public_send(key) == other.public_send(key) }
         end
 
         def id
-          [type, identifier]
+          if type == TYPE_REQUEST
+            [type, identifier, uuid]
+          else
+            [type, identifier]
+          end
         end
 
         def to_global_id(options = {})

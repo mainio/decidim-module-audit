@@ -6,7 +6,7 @@ shared_examples "request details logging" do |channel:, event:|
 
   it "logs the correct request details" do
     log = Decidim::Audit::Log.find_by(channel:, event:)
-    expect(log.request_details.except("request_id")).to match(
+    expect(log.request_details.except("request_id", "request_uuid")).to match(
       "request_method" => expected_method,
       "request_path" => expected_path,
       "ip" => request_headers["REMOTE_ADDR"],

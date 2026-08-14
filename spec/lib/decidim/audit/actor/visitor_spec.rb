@@ -3,19 +3,21 @@
 require "spec_helper"
 
 describe Decidim::Audit::Actor::Visitor do
-  subject(:instance) { described_class.new(type, identifier, ip) }
+  subject(:instance) { described_class.new(type, identifier, uuid, ip) }
 
   let(:type) { "S" }
   let(:identifier) { "xyz123" }
+  let(:uuid) { nil }
   let(:ip) { "1.2.3.4" }
 
   describe ".from_request" do
     subject { described_class.from_request(request) }
 
-    let(:request) { double(session:, requestid:, remote_ip:) }
+    let(:request) { double(session:, requestid:, uuid: request_uuid, remote_ip:) }
     let(:session) { nil }
     let(:sessionid) { "xyz123" }
     let(:requestid) { "123456" }
+    let(:request_uuid) { "00000000-1111-2222-3333-44444444444" }
     let(:remote_ip) { "1.2.3.4" }
 
     context "with session" do
@@ -37,6 +39,7 @@ describe Decidim::Audit::Actor::Visitor do
       it "returns an instance with correct details" do
         expect(subject.type).to eq("R")
         expect(subject.identifier).to eq(requestid)
+        expect(subject.uuid).to eq(request_uuid)
         expect(subject.ip).to eq(remote_ip)
       end
     end
@@ -57,6 +60,7 @@ describe Decidim::Audit::Actor::Visitor do
       it "returns an instance with correct details" do
         expect(subject.type).to eq("S")
         expect(subject.identifier).to eq(sessionid)
+        expect(subject.uuid).to be_nil
         expect(subject.ip).to eq(params[:ip])
       end
 
@@ -68,14 +72,27 @@ describe Decidim::Audit::Actor::Visitor do
         it "returns an instance with correct details" do
           expect(subject.type).to eq("S")
           expect(subject.identifier).to eq(sessionid)
+          expect(subject.uuid).to be_nil
           expect(subject.ip).to be_nil
+        end
+      end
+
+      context "without uuid" do
+        let(:id) { ["S", sessionid] }
+
+        it "returns an instance with correct details" do
+          expect(subject.type).to eq("S")
+          expect(subject.identifier).to eq(sessionid)
+          expect(subject.uuid).to be_nil
+          expect(subject.ip).to eq(params[:ip])
         end
       end
     end
 
     context "with request details" do
-      let(:id) { ["R", requestid] }
+      let(:id) { ["R", requestid, request_uuid] }
       let(:requestid) { "123456" }
+      let(:request_uuid) { "00000000-1111-2222-3333-44444444444" }
       let(:params) { { ip: "1.2.3.4" } }
 
       it { is_expected.to be_a(described_class) }
@@ -83,6 +100,7 @@ describe Decidim::Audit::Actor::Visitor do
       it "returns an instance with correct details" do
         expect(subject.type).to eq("R")
         expect(subject.identifier).to eq(requestid)
+        expect(subject.uuid).to eq(request_uuid)
         expect(subject.ip).to eq(params[:ip])
       end
 
@@ -94,7 +112,19 @@ describe Decidim::Audit::Actor::Visitor do
         it "returns an instance with correct details" do
           expect(subject.type).to eq("R")
           expect(subject.identifier).to eq(requestid)
+          expect(subject.uuid).to eq(request_uuid)
           expect(subject.ip).to be_nil
+        end
+      end
+
+      context "without uuid" do
+        let(:id) { ["R", requestid] }
+
+        it "returns an instance with correct details" do
+          expect(subject.type).to eq("R")
+          expect(subject.identifier).to eq(requestid)
+          expect(subject.uuid).to be_nil
+          expect(subject.ip).to eq(params[:ip])
         end
       end
     end
@@ -106,7 +136,7 @@ describe Decidim::Audit::Actor::Visitor do
     end
 
     context "with incorrectly formed array" do
-      let(:id) { %w(S xyz123 foobar) }
+      let(:id) { %w(S xyz123 uuid foobar) }
 
       it { expect { subject }.to raise_error(described_class::InvalidIdError) }
 
@@ -118,19 +148,19 @@ describe Decidim::Audit::Actor::Visitor do
     end
 
     context "with an integer type" do
-      let(:id) { [123, "xyz123"] }
+      let(:id) { [123, "xyz123", "uuid"] }
 
       it { expect { subject }.to raise_error(described_class::InvalidIdError) }
     end
 
     context "with a nil type" do
-      let(:id) { [nil, "xyz123"] }
+      let(:id) { [nil, "xyz123", "uuid"] }
 
       it { expect { subject }.to raise_error(described_class::InvalidIdError) }
     end
 
     context "with incorrect type" do
-      let(:id) { %w(X xyz) }
+      let(:id) { %w(X xyz uuid) }
 
       it { expect { subject }.to raise_error(described_class::InvalidIdError) }
     end
@@ -171,6 +201,24 @@ describe Decidim::Audit::Actor::Visitor do
         expect(record.identifier).to eq(identifier)
         expect(record.ip).to eq(ip)
       end
+
+      context "with request type" do
+        let(:type) { "R" }
+        let(:uuid) { "00000000-1111-2222-3333-44444444444" }
+
+        it "returns a valid ID" do
+          expect(subject.to_s).to eq("gid://decidim-audit-module/#{described_class.name}/#{type}/#{identifier}/#{uuid}?ip=#{ip}")
+        end
+
+        it "can be used to find a record" do
+          record = GlobalID.find(subject.to_s)
+          expect(record).to be_a(described_class)
+          expect(record.type).to eq(type)
+          expect(record.identifier).to eq(identifier)
+          expect(record.uuid).to eq(uuid)
+          expect(record.ip).to eq(ip)
+        end
+      end
     end
   end
 
@@ -192,6 +240,24 @@ describe Decidim::Audit::Actor::Visitor do
         expect(record.type).to eq(type)
         expect(record.identifier).to eq(identifier)
         expect(record.ip).to eq(ip)
+      end
+
+      context "with request type" do
+        let(:type) { "R" }
+        let(:uuid) { "00000000-1111-2222-3333-44444444444" }
+
+        it "returns a valid ID" do
+          expect(subject.to_s).to eq(verifier.generate(subject.uri.to_s, purpose: subject.purpose, expires_at: subject.expires_at))
+        end
+
+        it "can be used to find a record" do
+          record = SignedGlobalID.find(subject.to_s)
+          expect(record).to be_a(described_class)
+          expect(record.type).to eq(type)
+          expect(record.identifier).to eq(identifier)
+          expect(record.uuid).to eq(uuid)
+          expect(record.ip).to eq(ip)
+        end
       end
     end
   end

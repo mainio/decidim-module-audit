@@ -119,7 +119,7 @@ describe Decidim::Audit do
     let(:organization) { create(:organization) }
     let(:level) { :info }
     let(:details) { { foo: "bar" } }
-    let(:actor) { Decidim::Audit::Actor::Visitor.new("S", "xyz123", "1.2.3.4") }
+    let(:actor) { build(:audit_visitor) }
     let(:request_details) { { ip: "1.2.3.4" } }
     let!(:resource) { create(:user, :confirmed, organization:) }
     let(:resource_changes) { { name: ["Old Name", resource.name] } }
@@ -166,6 +166,7 @@ describe Decidim::Audit do
           double(
             env: request_env,
             request_id:,
+            uuid: request_uuid,
             request_method:,
             path: request_path,
             ip:,
@@ -173,6 +174,7 @@ describe Decidim::Audit do
           )
         end
         let(:request_id) { "123456" }
+        let(:request_uuid) { "00000000-1111-2222-3333-44444444444" }
         let(:request_method) { "POST" }
         let(:request_path) { "/path" }
         let(:ip) { "10.0.0.1" }
@@ -209,6 +211,7 @@ describe Decidim::Audit do
         it "fetches the request details from the request automatically" do
           expect(subject.request_details).to match(
             "request_id" => request_id,
+            "request_uuid" => request_uuid,
             "request_method" => request_method,
             "request_path" => request_path,
             "ip" => ip,

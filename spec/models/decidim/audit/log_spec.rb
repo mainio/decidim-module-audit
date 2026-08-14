@@ -104,7 +104,7 @@ describe Decidim::Audit::Log do
     end
 
     context "with visitor" do
-      let(:actor) { Decidim::Audit::Actor::Visitor.new("S", SecureRandom.uuid, "1.2.3.4") }
+      let(:actor) { build(:audit_visitor) }
 
       it "returns the actor object" do
         expect(subject).to be_a(Decidim::Audit::Actor::Visitor)

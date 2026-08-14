@@ -9,6 +9,7 @@ describe Decidim::Audit::Request do
     double(
       request_id:,
       requestid: request_id,
+      uuid: request_uuid,
       request_method:,
       path: request_path,
       ip:,
@@ -24,6 +25,7 @@ describe Decidim::Audit::Request do
     }
   end
   let(:request_id) { "123456" }
+  let(:request_uuid) { "00000000-1111-2222-3333-44444444444" }
   let(:request_method) { "POST" }
   let(:request_path) { "/path" }
   let(:ip) { "10.0.0.1" }
@@ -79,6 +81,7 @@ describe Decidim::Audit::Request do
         it "sets the correct details for the visitor" do
           expect(subject.type).to eq("R")
           expect(subject.identifier).to eq(request_id)
+          expect(subject.uuid).to eq(request_uuid)
           expect(subject.ip).to eq(remote_ip)
         end
       end
@@ -121,6 +124,7 @@ describe Decidim::Audit::Request do
     it "returns the correct details" do
       expect(subject).to match(
         request_id:,
+        request_uuid:,
         request_method:,
         request_path:,
         ip:,

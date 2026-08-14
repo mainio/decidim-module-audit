@@ -4,7 +4,7 @@ module Decidim
   # This namespace holds the logic of the `Audit` functionality.
   module Audit
     class Request
-      delegate :request_id, :remote_ip, :session, to: :req
+      delegate :request_id, :uuid, :remote_ip, :session, to: :req
 
       def initialize(req)
         @req = req
@@ -25,6 +25,7 @@ module Decidim
       def details
         {
           request_id: req.request_id,
+          request_uuid: req.uuid,
           request_method: req.request_method,
           request_path: req.path,
           ip: req.ip,

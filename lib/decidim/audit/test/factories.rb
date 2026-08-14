@@ -19,6 +19,7 @@ FactoryBot.define do
       new(
         "S",
         SecureRandom.uuid,
+        nil,
         Faker::Internet.public_ip_v4_address
       )
     end
