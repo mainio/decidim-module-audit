@@ -29,8 +29,38 @@ module Decidim
           ::Devise::SessionsController.include(SessionsControllerExtension)
           ::Devise::OmniauthCallbacksController.include(OmniauthCallbacksControllerExtension)
 
+          ControllerAuditUserRead.configure do
+            audit_controller Decidim::Admin::UsersController, actions: :index
+            audit_controller Decidim::Admin::OfficializationsController
+            audit_controller Decidim::Admin::ImpersonatableUsersController
+            audit_controller Decidim::Admin::ConflictsController
+            audit_controller Decidim::Admin::ManagedUsers::ImpersonationLogsController
+            audit_controller Decidim::Admin::ManagedUsers::PromotionsController
+            audit_controller Decidim::Admin::ParticipatorySpace::UserRoleController
+            audit_controller Decidim::Admin::DashboardController, actions: :show, events: { show: :read_list }
+            audit_controller Decidim::Admin::LogsController
+
+            # ENABLE THIS AFTER THE FOLLOWING PR IS RELEASED:
+            # https://github.com/decidim/decidim/pull/17558
+            #
+            # This can be enabled after the optimized conversation fetching is
+            # implemented and merged to the core. When enabling, remove
+            # AdminReportsControllerExtension.
+            #
+            # audit_controller Decidim::Admin::Moderations::ReportsController, actions: :index, events: { index: :read }
+          end
+
+          # REMOVE THIS AFTER THE FOLLOWING PR IS RELEASED:
+          # https://github.com/decidim/decidim/pull/17558
+          #
+          # After removed, enable the commented `audit_controller` call above
+          # for the same controller.
+          #
+          # See AdminReportsControllerExtension for further information.
+          Decidim::Admin::Moderations::ReportsController.include(AdminReportsControllerExtension)
+
           # Models
-          ::Decidim::User.include(Auditable)
+          ::Decidim::UserBaseEntity.include(Auditable)
           ::Decidim::System::Admin.include(Auditable) if Decidim.module_installed?(:system)
           ::Decidim::Authorization.class_eval do
             include(Auditable)
@@ -43,6 +73,29 @@ module Decidim
             exclude_auditable_attributes! :metadata, :verification_metadata
           end
         end
+      end
+
+      # Finds all configured authorization workflows and adds audit to their
+      # admin controllers. Note that for the user-facing controllers do not need
+      # additional auditing because they manage changes for the authorization
+      # records which is already audited. The extra admin-level audit is needed
+      # because someone else (i.e. an admin user) is typically managing the
+      # records in these cases when these actions need to be logged.
+      initializer "decidim_audit.authorization_workflows_audit" do
+        # After Rails 7.1 this can be changed the following:
+        # config.after_routes_loaded do
+        #   # (move the code here from extend_admin_workflow_controllers)
+        # end
+        engine = self
+        config.to_prepare do
+          engine.send(:extend_admin_workflow_controllers)
+        end
+      end
+      # After Rails 7.1 and the above change, this can be removed. This is
+      # needed because the routes would not be defined on the first run of the
+      # `to_prepare` block above.
+      Rails::Application::Finisher.initializer :decidim_audit_authorization_workflows, after: :set_routes_reloader_hook do
+        Decidim::Audit::Engine.instance.send(:extend_admin_workflow_controllers)
       end
 
       initializer "decidim_audit.middleware", before: "decidim_core.middleware" do |app|
@@ -96,6 +149,27 @@ module Decidim
             original&.call(env)
           end
         )
+      end
+
+      def extend_admin_workflow_controllers
+        return unless Decidim.respond_to?(:authorization_workflows)
+
+        engines = Decidim.authorization_workflows.to_h do |workflow|
+          [workflow.name, workflow.admin_engine]
+        end.compact
+        engines.each do |workflow_name, engine|
+          controllers = engine.routes.set.map do |route|
+            "#{route.defaults[:controller].underscore.camelize}Controller"
+          end.uniq
+
+          controllers.each do |controller_name|
+            controller = controller_name.constantize
+            controller.include(AuthorizationWorkflowAdminControllerExtension)
+            controller.audit_workflow_name(workflow_name)
+          rescue NameError => e
+            Rails.logger.warn("[AUDIT] Authorization workflow admin controller not found: #{e.name}. This controller is not audited.")
+          end
+        end
       end
     end
   end

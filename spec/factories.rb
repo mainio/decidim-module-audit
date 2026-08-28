@@ -2,4 +2,7 @@
 
 require "decidim/core/test/factories"
 require "decidim/system/test/factories"
+require "decidim/verifications/test/factories"
+require "decidim/blogs/test/factories"
+require "decidim/proposals/test/factories"
 require "decidim/audit/test/factories"

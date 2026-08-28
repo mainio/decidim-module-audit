@@ -32,6 +32,8 @@ This module serves for:
 - User record changes (create, update, and destroy) [Note 1]
 - System admin record changes (create, update, and destroy) [Note 1]
 - Authorization record changes (create, update, and destroy) [Note 1, Note 2]
+- User record reads in admin panel [Note 3]
+- Authorization record reads in admin panel [Note 3]
 
 [Note 1] Note that if the `before_` and `after_` callbacks are omitted when
 modifying the records, the changes related to create, update, and destroy events
@@ -42,6 +44,12 @@ through PGAudit.
 are excluded from the audit records as there may be different retention
 requirements than the audit log records. If this data needs to be stored in
 audit logs, it is recommended to add additional logging e.g. through PGAudit.
+
+[Note 3] This only works for the controllers provided by the core modules. If
+you need to audit any other admin view where user or authorization records are
+read, please see the initializer configurations at the engine definition of this
+module. For authorization handlers, the auditing depends on whether or not the
+admin views are performing any reads against the user or authorization records.
 
 ## Important note
 
