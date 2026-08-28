@@ -47,9 +47,18 @@ module Decidim
         actor: current_actor,
         request_details: current_request&.details,
         resource: nil,
+        resource_id: nil,
+        resource_type: nil,
         resource_changes: nil
       )
         actor_details = Decidim::Audit::Resolver::ActorDetails.for(actor)
+
+        resource_attrs =
+          if resource_id && resource_type
+            { resource_id:, resource_type: }
+          else
+            { resource: }
+          end
 
         Decidim::Audit::Log.create!(
           organization:,
@@ -62,7 +71,7 @@ module Decidim
           actor_type: actor_details.type,
           actor_roles: actor_details.roles,
           request_details:,
-          resource:,
+          **resource_attrs,
           resource_changes:
         )
       end
