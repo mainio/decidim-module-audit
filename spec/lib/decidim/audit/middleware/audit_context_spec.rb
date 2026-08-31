@@ -25,10 +25,18 @@ describe Decidim::Audit::Middleware::AuditContext do
       it "does not set the current request again" do
         first_called = false
         second_called = false
+        first_request = nil
+        second_request = nil
 
         expect(app).to receive(:call).twice do |app_env|
-          first_called = app_env["first_request_active"] == true unless first_called == true
-          second_called = app_env["second_request_active"] == true unless second_called == true
+          if app_env["first_request_active"] == true && first_called != true
+            first_called = true
+            first_request = Decidim::Audit.current_request
+          end
+          if app_env["second_request_active"] == true && second_called != true
+            second_called = true
+            second_request = Decidim::Audit.current_request
+          end
           sleep 2 unless second_called
         end
 
@@ -49,6 +57,9 @@ describe Decidim::Audit::Middleware::AuditContext do
 
         expect(first_called).to be(true)
         expect(second_called).to be(true)
+        expect(Decidim::Audit.current_request).to be_nil
+
+        expect(first_request).not_to be(second_request)
       end
     end
   end
