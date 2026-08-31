@@ -20,6 +20,28 @@ describe Decidim::Audit do
         expect { described_class.with_request(request) }.to raise_error(Decidim::Audit::RequestDefinedError)
       end
     end
+
+    it "works with multiple threads" do
+      first_thread = Thread.new do
+        described_class.with_request(request) do
+          expect(described_class.current_request).to be_a(Decidim::Audit::Request)
+          expect(described_class.current_request.send(:req)).to eq(request)
+          sleep 2
+        end
+      end
+
+      second_request = double
+      second_thread = Thread.new do
+        sleep 1
+        described_class.with_request(second_request) do
+          expect(described_class.current_request).to be_a(Decidim::Audit::Request)
+          expect(described_class.current_request.send(:req)).to eq(second_request)
+        end
+      end
+
+      second_thread.join
+      first_thread.join
+    end
   end
 
   describe ".with_actor" do
@@ -37,6 +59,26 @@ describe Decidim::Audit do
       described_class.with_actor(actor) do
         expect { described_class.with_actor(actor) }.to raise_error(Decidim::Audit::ActorDefinedError)
       end
+    end
+
+    it "works with multiple threads" do
+      first_thread = Thread.new do
+        described_class.with_actor(actor) do
+          expect(described_class.current_actor).to eq(actor)
+          sleep 2
+        end
+      end
+
+      second_actor = double
+      second_thread = Thread.new do
+        sleep 1
+        described_class.with_actor(second_actor) do
+          expect(described_class.current_actor).to eq(second_actor)
+        end
+      end
+
+      second_thread.join
+      first_thread.join
     end
   end
 

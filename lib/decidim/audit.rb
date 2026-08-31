@@ -13,28 +13,30 @@ module Decidim
     autoload :Resolver, "decidim/audit/resolver"
 
     class << self
-      attr_reader :current_request
+      def current_request
+        Thread.current[:audit_current_request]
+      end
 
       def with_request(req)
-        raise RequestDefinedError, "Request has been already defined." if instance_variable_defined?(:@current_request)
+        raise RequestDefinedError, "Request has been already defined." if current_request
 
-        @current_request = Request.new(req)
+        Thread.current[:audit_current_request] = Request.new(req)
         yield
       ensure
-        remove_instance_variable(:@current_request) if instance_variable_defined?(:@current_request)
+        Thread.current[:audit_current_request] = nil
       end
 
       def with_actor(actor)
-        raise ActorDefinedError, "Actor has been already defined." if instance_variable_defined?(:@current_actor)
+        raise ActorDefinedError, "Actor has been already defined." if Thread.current[:audit_current_actor]
 
-        @current_actor = actor
+        Thread.current[:audit_current_actor] = actor
         yield
       ensure
-        remove_instance_variable(:@current_actor) if instance_variable_defined?(:@current_actor)
+        Thread.current[:audit_current_actor] = nil
       end
 
       def current_actor
-        @current_actor || current_request&.actor || Decidim::Audit::Actor::SystemUser.fetch
+        Thread.current[:audit_current_actor] || current_request&.actor || Decidim::Audit::Actor::SystemUser.fetch
       end
 
       def log(
