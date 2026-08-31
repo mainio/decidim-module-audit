@@ -33,23 +33,25 @@ module Decidim
       # is set. This is used to audit the read actions against the specified
       # auditable records.
       class RecordStore
-        def self.for(klass, flag = klass.audit_flag)
-          return unless flag
+        class << self
+          def for(klass, flag = klass.audit_flag)
+            return unless flag
 
-          @stores ||= {}
-          @stores[klass] ||= {}
-          @stores[klass][flag] ||= new
-        end
+            @stores ||= {}
+            @stores[klass] ||= {}
+            @stores[klass][flag] ||= new
+          end
 
-        def self.clear(klass, flag)
-          return false unless @stores
-          return false unless @stores[klass]
+          def clear(klass, flag)
+            return false unless @stores
+            return false unless @stores[klass]
 
-          @stores[klass].delete(flag)
-          @stores.delete(klass) if @stores[klass].empty?
-          remove_instance_variable(:@stores) if @stores.empty?
+            @stores[klass].delete(flag)
+            @stores.delete(klass) if @stores[klass].empty?
+            remove_instance_variable(:@stores) if @stores.empty?
 
-          true
+            true
+          end
         end
 
         def initialize
@@ -125,39 +127,46 @@ module Decidim
           @excluded_auditable_attributes += attributes.map(&:to_s)
         end
 
-        def audit_read(event, &)
-          with_audit_flag(event) { yield }
+        def audit_read(event, message: nil, details: nil, &)
+          with_audit_lock(event) do
+            with_audit_flag(event) { yield }
 
-          # Collect the record IDs from the current class as well as all
-          # superclasses.
-          record_ids = []
-          target = self
-          while target.include?(Decidim::Audit::Auditable)
-            store = RecordStore.for(target, event)
-            record_ids += store.get.flatten if store
-            target = target.superclass
-          end
-          record_ids.uniq!
-          return if record_ids.empty?
+            # Collect the record IDs from the current class as well as all
+            # superclasses.
+            record_ids = []
+            target = self
+            while target.include?(Decidim::Audit::Auditable)
+              store = RecordStore.for(target, event)
+              record_ids += store.get.flatten if store
+              target = target.superclass
+            end
+            record_ids.uniq!
+            return if record_ids.empty?
 
-          if event == :read && record_ids.length == 1
-            Decidim::Audit.log(
-              channel: table_name,
-              event:,
-              level: :info,
-              resource_id: record_ids.first,
-              resource_type: polymorphic_name
-            )
-          else
-            Decidim::Audit.log(
-              channel: table_name,
-              event:,
-              level: :info,
-              details: { ids: record_ids }
-            )
+            if event == :read && record_ids.length == 1
+              Decidim::Audit.log(
+                channel: table_name,
+                event:,
+                level: :info,
+                message:,
+                resource_id: record_ids.first,
+                resource_type: polymorphic_name,
+                details:
+              )
+            else
+              details ||= {}
+              details[:ids] = record_ids
+              Decidim::Audit.log(
+                channel: table_name,
+                event:,
+                level: :info,
+                message:,
+                details:
+              )
+            end
+          ensure
+            RecordStore.clear(self, event)
           end
-        ensure
-          RecordStore.clear(self, event)
         end
 
         def with_audit_flag(flag)
@@ -177,7 +186,16 @@ module Decidim
           end
         end
 
-        private :with_audit_flag
+        def with_audit_lock(event)
+          @mutex_registry ||= {}
+          @mutex_registry[event] ||= Mutex.new
+
+          return yield if @mutex_registry[event].locked?
+
+          @mutex_registry[event].synchronize { yield }
+        end
+
+        private :with_audit_flag, :with_audit_lock
       end
 
       private

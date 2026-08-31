@@ -165,6 +165,80 @@ describe Decidim::Audit::Auditable do
       end
     end
 
+    context "when multiple audit blocks are present with the same event" do
+      it "maps the audited records correctly to the same event" do
+        expect do
+          resource_class.audit_read(:read) do
+            resource_class.find(existing_by_author1[0].id)
+            resource_class.audit_read(:read) do
+              resource_class.find(existing_by_author2[0].id)
+            end
+          end
+        end.to change(Decidim::Audit::Log, :count).by(1)
+
+        log = Decidim::Audit::Log.where(channel: resource_class.table_name).last
+        expect(log.event).to eq("read")
+        expect(log.resource).to be_nil
+        expect(log.details).to eq("ids" => [existing_by_author1[0].id, existing_by_author2[0].id])
+      end
+    end
+
+    context "when audit flagging in different threads" do
+      include_context "with concurrency"
+
+      it "maps the audited records correctly for each thread" do
+        found_in_threads = []
+        expect do
+          threads = existing_by_author1.count.times.map do |idx|
+            message = "thread_#{idx}"
+            Thread.new do
+              resource_class.audit_read(:testing, message:) do
+                resource_class.find(existing_by_author1[idx].id)
+
+                store = described_class::RecordStore.for(resource_class, :testing)
+                found_in_threads[idx] = store.get.dup
+              end
+            end
+          end
+          threads.each(&:join)
+        end.to change(Decidim::Audit::Log, :count).by(3)
+
+        expect(resource_class.audit_flag).to be_nil
+        expect(found_in_threads).to eq(existing_by_author1.map { |r| [r.id] })
+
+        logs = Decidim::Audit::Log.where(channel: resource_class.table_name).where.not(message: nil).order(:message).last(3)
+        expect(logs[0].message).to eq("thread_0")
+        expect(logs[0].details).to eq("ids" => [existing_by_author1[0].id])
+        expect(logs[1].message).to eq("thread_1")
+        expect(logs[1].details).to eq("ids" => [existing_by_author1[1].id])
+        expect(logs[2].message).to eq("thread_2")
+        expect(logs[2].details).to eq("ids" => [existing_by_author1[2].id])
+      end
+    end
+
+    context "when audit flagging in the main thread and records fetched in threads" do
+      include_context "with concurrency"
+
+      it "maps the audited records from all threads" do
+        expect do
+          resource_class.audit_read(:testing, message: "main") do
+            threads = existing_by_author1.count.times.map do |idx|
+              Thread.new do
+                resource_class.find(existing_by_author1[idx].id)
+              end
+            end
+
+            threads.each(&:join)
+          end
+          expect(resource_class.audit_flag).to be_nil
+        end.to change(Decidim::Audit::Log, :count).by(1)
+
+        log = Decidim::Audit::Log.where(channel: resource_class.table_name).last
+        expect(log.message).to eq("main")
+        expect(log.details["ids"]).to match_array(existing_by_author1.map(&:id))
+      end
+    end
+
     context "with #find" do
       it "audits a single find" do
         expect do
