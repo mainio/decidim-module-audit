@@ -14,29 +14,23 @@ module Decidim
 
     class << self
       def current_request
-        Thread.current[:audit_current_request]
+        ConcurrentStore.current_request.value
       end
 
       def with_request(req)
         raise RequestDefinedError, "Request has been already defined." if current_request
 
-        Thread.current[:audit_current_request] = Request.new(req)
-        yield
-      ensure
-        Thread.current[:audit_current_request] = nil
+        ConcurrentStore.current_request.bind(Request.new(req)) { yield }
       end
 
       def with_actor(actor)
-        raise ActorDefinedError, "Actor has been already defined." if Thread.current[:audit_current_actor]
+        raise ActorDefinedError, "Actor has been already defined." if ConcurrentStore.current_actor.value
 
-        Thread.current[:audit_current_actor] = actor
-        yield
-      ensure
-        Thread.current[:audit_current_actor] = nil
+        ConcurrentStore.current_actor.bind(actor) { yield }
       end
 
       def current_actor
-        Thread.current[:audit_current_actor] || current_request&.actor || Decidim::Audit::Actor::SystemUser.fetch
+        ConcurrentStore.current_actor.value || current_request&.actor || Decidim::Audit::Actor::SystemUser.fetch
       end
 
       def log(
@@ -82,6 +76,18 @@ module Decidim
     class ActorDefinedError < StandardError; end
 
     class RequestDefinedError < StandardError; end
+
+    module ConcurrentStore
+      class << self
+        def current_request
+          @current_request ||= Concurrent::LockLocalVar.new
+        end
+
+        def current_actor
+          @current_actor ||= Concurrent::LockLocalVar.new
+        end
+      end
+    end
 
     mattr_accessor :retention_period_days, default: Decidim::Env.new("DECIDIM_AUDIT_RETENTION_PERIOD_DAYS", "365").to_i
   end
