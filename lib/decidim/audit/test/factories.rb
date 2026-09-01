@@ -44,14 +44,17 @@ FactoryBot.define do
 
     trait :with_user_actor do
       actor { create(:user, :confirmed, organization:).to_gid }
+      actor_type { "organization_user" }
     end
 
     trait :with_visitor_actor do
       actor { build(:audit_visitor).to_gid }
+      actor_type { "visitor" }
     end
 
     trait :with_system_actor do
       actor { build(:audit_system_user).to_gid }
+      actor_type { "system_user" }
     end
 
     trait :with_request do
@@ -103,10 +106,15 @@ FactoryBot.define do
       end
     end
 
+    trait :with_actor_roles do
+      actor_roles { %w(user_manager assembly_1_admin process_1_evaluator) }
+    end
+
     trait :with_full_details do
       with_message
       with_details
       with_user_actor
+      with_actor_roles
       with_request
       with_changed_resource
     end

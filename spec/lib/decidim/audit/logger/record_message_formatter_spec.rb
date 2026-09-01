@@ -14,8 +14,10 @@ describe Decidim::Audit::Logger::RecordMessageFormatter do
         [
           record.message,
           "",
-          "defails:#{format_hash(record.details)}",
+          "details:#{format_hash(record.details)}",
+          "actor_type:#{record.actor_type}",
           "actor:#{record.actor_gid}",
+          "actor_roles:#{record.actor_roles.join(",")}",
           "request:#{format_hash(record.request_details)}",
           "resource:#{record.resource_type}##{record.resource_id}",
           "resource_changes:#{format_hash(record.resource_changes)}"
@@ -29,8 +31,10 @@ describe Decidim::Audit::Logger::RecordMessageFormatter do
       let(:record) { create(:audit_log, :with_full_details, message: nil) }
       let(:expected_message) do
         [
-          "defails:#{format_hash(record.details)}",
+          "details:#{format_hash(record.details)}",
+          "actor_type:#{record.actor_type}",
           "actor:#{record.actor_gid}",
+          "actor_roles:#{record.actor_roles.join(",")}",
           "request:#{format_hash(record.request_details)}",
           "resource:#{record.resource_type}##{record.resource_id}",
           "resource_changes:#{format_hash(record.resource_changes)}"
