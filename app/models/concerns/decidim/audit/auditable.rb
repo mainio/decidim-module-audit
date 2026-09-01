@@ -188,11 +188,11 @@ module Decidim
 
         def with_audit_lock(event)
           @mutex_registry ||= {}
-          @mutex_registry[event] ||= Mutex.new
+          mutex = (@mutex_registry[event] ||= Mutex.new)
 
-          return yield if @mutex_registry[event].locked?
+          return yield if mutex.locked? && mutex.owned?
 
-          @mutex_registry[event].synchronize { yield }
+          mutex.synchronize { yield }
         end
 
         private :with_audit_flag, :with_audit_lock
