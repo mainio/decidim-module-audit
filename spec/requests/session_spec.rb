@@ -151,6 +151,78 @@ describe "Session" do
     end
   end
 
+  context "when the session has expired" do
+    let!(:user) { create(:user, :confirmed, :admin, email:, password:, organization:) }
+
+    # The target path needs to be one that would cause the action to be logged.
+    let(:target_path) { Decidim::Admin::Engine.routes.url_helpers.users_path }
+    let(:redirect_path) { Decidim::Core::Engine.routes.url_helpers.new_user_session_path }
+
+    before do
+      login_as user, scope: :user
+
+      # Do the initial request as the signed in user to add the initial
+      # successful authentication log entry. Otherwise it would be logged during
+      # the next request.
+      get("/", params: { locale: I18n.default_locale }, headers: { "HOST" => organization.host })
+    end
+
+    # There used to be an endless loop caused by the audit action for the admin
+    # views. This tests the situation that used to cause the issue.
+    it "redirects the user to the login page normally" do
+      get(target_path, params: { locale: I18n.default_locale }, headers: { "HOST" => organization.host })
+      expect(response).to have_http_status(:ok)
+
+      # We want to keep the session cookie valid so that the timeout
+      # functionality works as expected through Devise timeoutable. This is why
+      # the timeout_in is manually changed here instead of travelling to the
+      # future for the whole session expiration time (which would invalidate the
+      # session cookie for the next request).
+      allow(Decidim::User).to receive(:timeout_in).and_return(1.second)
+      travel 2.seconds
+
+      expect do
+        get(target_path, params: { locale: I18n.default_locale }, headers: { "HOST" => organization.host })
+        expect(response).to have_http_status(:found)
+      end.to change(Decidim::Audit::Log, :count).by(2)
+
+      logs = Decidim::Audit::Log.order(:id).last(2)
+      expect(logs[0].channel).to eq("authentication")
+      expect(logs[0].level).to eq("info")
+      expect(logs[0].event).to eq("logout")
+      expect(logs[0].details["scope"]).to eq("user")
+      expect(logs[0].actor_type).to eq("visitor")
+      expect(logs[0].actor).to be_a(Decidim::Audit::Actor::Visitor)
+      expect(logs[1].channel).to eq("authentication")
+      expect(logs[1].level).to eq("notice")
+      expect(logs[1].event).to eq("failure")
+      expect(logs[1].message).to eq("timeout")
+      expect(logs[1].details["scope"]).to eq("user")
+      expect(logs[1].details["action"]).to eq("unauthenticated")
+      expect(logs[1].actor_type).to eq("visitor")
+      expect(logs[1].actor).to be_a(Decidim::Audit::Actor::Visitor)
+
+      # There is one extra redirect caused by the Devise failure app redirecting
+      # back to the user's stored URL (i.e. the previously requested URL). The
+      # Devise failure app is called after the timeoutable hook throws a :warden
+      # exception.
+      expect do
+        get(response.headers["Location"])
+        expect(response).to have_http_status(:found)
+        expect(response).to redirect_to(redirect_path)
+      end.to change(Decidim::Audit::Log, :count).by(1)
+
+      log = Decidim::Audit::Log.order(:id).last
+      expect(log.channel).to eq("authentication")
+      expect(log.level).to eq("notice")
+      expect(log.event).to eq("failure")
+      expect(log.details["scope"]).to eq("user")
+      expect(log.details["action"]).to eq("unauthenticated")
+      expect(logs[1].actor_type).to eq("visitor")
+      expect(logs[1].actor).to be_a(Decidim::Audit::Actor::Visitor)
+    end
+  end
+
   def perform_login_attempt(email:, password:)
     post(
       sign_in_path,

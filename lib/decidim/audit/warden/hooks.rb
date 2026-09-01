@@ -41,10 +41,26 @@ Warden::Manager.before_logout do |record, _warden, options|
 
   scope = options[:scope]
 
+  # The actor has to be manually defined here because otherwise this could lead
+  # to an endless loop with Devise timeoutable. This happens when:
+  # - Devise timeoutable calls `warden_proxy.sign_out`
+  # - That would which would call this hook
+  # - `Decidim::Audit.log` would call `current_request.actor`
+  # - `current_request.actor` would call `warden_proxy.user` and
+  #   `warden_proxy.set_user`
+  # - This would fire the Devise timeoutable's `after_set_user` hook
+  # - This loop would start from the beginning
+  #
+  # This is an edge case that can happen if the session cookie is still valid
+  # and sent to the server but the timeout time has been already reached at
+  # server side.
+  actor = Decidim::Audit.current_request.visitor
+
   Decidim::Audit.log(
     channel: "authentication",
     event: "logout",
     details: { scope: },
+    actor:,
     resource: record
   )
 end
