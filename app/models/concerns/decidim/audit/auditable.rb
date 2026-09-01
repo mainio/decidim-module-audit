@@ -187,8 +187,8 @@ module Decidim
         end
 
         def with_audit_lock(event)
-          @mutex_registry ||= {}
-          mutex = (@mutex_registry[event] ||= Mutex.new)
+          @audit_mutex_registry ||= {}
+          mutex = (@audit_mutex_registry[event] ||= Mutex.new)
 
           return yield if mutex.locked? && mutex.owned?
 
