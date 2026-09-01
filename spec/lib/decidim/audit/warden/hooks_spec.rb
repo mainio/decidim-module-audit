@@ -78,6 +78,15 @@ describe "Warden" do
   end
 
   describe "before_logout" do
+    let(:request) { Decidim::Audit::Request.new(rack_request) }
+    let(:rack_request) { ActionDispatch::Request.new(env) }
+    let(:visitor) { build(:audit_visitor) }
+
+    before do
+      allow(Decidim::Audit).to receive(:current_request).and_return(request)
+      allow(request).to receive(:visitor).and_return(visitor)
+    end
+
     it "logs a logout" do
       setup_rack(app).call(env)
 
@@ -89,6 +98,8 @@ describe "Warden" do
       expect(log.level).to eq("info")
       expect(log.details).to match("scope" => "user")
       expect(log.resource).to eq(user)
+      expect(log.actor_type).to eq("visitor")
+      expect(log.actor).to eq(visitor)
     end
   end
 
