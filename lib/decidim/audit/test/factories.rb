@@ -42,9 +42,19 @@ FactoryBot.define do
       details { { foo: "foo", bar: "bar" } }
     end
 
+    trait :with_application_admin_actor do
+      actor { create(:admin).to_gid }
+      actor_type { "application_admin" }
+    end
+
     trait :with_user_actor do
       actor { create(:user, :confirmed, organization:).to_gid }
       actor_type { "organization_user" }
+    end
+
+    trait :with_admin_actor do
+      actor { create(:user, :admin, :confirmed, organization:).to_gid }
+      actor_type { "organization_admin" }
     end
 
     trait :with_visitor_actor do
