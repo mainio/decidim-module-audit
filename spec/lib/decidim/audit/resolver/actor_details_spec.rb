@@ -21,7 +21,7 @@ describe Decidim::Audit::Resolver::ActorDetails do
       let(:actor) { build(:admin) }
 
       it "returns the correct details" do
-        expect(subject.type).to eq("app_admin")
+        expect(subject.type).to eq("application_admin")
         expect(subject.roles).to be_nil
       end
     end

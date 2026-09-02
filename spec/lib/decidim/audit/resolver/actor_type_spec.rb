@@ -17,7 +17,7 @@ describe Decidim::Audit::Resolver::ActorType do
     context "with system admin" do
       let(:actor) { build(:admin) }
 
-      it { is_expected.to eq("app_admin") }
+      it { is_expected.to eq("application_admin") }
     end
 
     context "with organization admin" do

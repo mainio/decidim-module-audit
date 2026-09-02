@@ -16,7 +16,7 @@ module Decidim
         end
 
         def resolve
-          return "app_admin" if Decidim.module_installed?(:system) && actor.is_a?(Decidim::System::Admin)
+          return "application_admin" if Decidim.module_installed?(:system) && actor.is_a?(Decidim::System::Admin)
 
           case actor
           # Uncomment after 0.31 update
