@@ -22,7 +22,7 @@ module Decidim
       extend ActiveSupport::Concern
 
       included do
-        before_action :index, :audit_read
+        before_action :audit_read, only: [:index] # rubocop:disable Rails/LexicallyScopedActionFilter
       end
 
       private
