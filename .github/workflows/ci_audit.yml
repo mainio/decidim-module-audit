@@ -14,12 +14,12 @@ concurrency:
 jobs:
   build_app:
     name: Build test application
-    uses: mainio/gha-decidim-module/.github/workflows/build_app.yml@main
+    uses: mainio/gha-decidim-module/.github/workflows/build_app.yml@next
     secrets: inherit
   main:
     needs: build_app
     name: Tests
-    uses: mainio/gha-decidim-module/.github/workflows/ci_rspec.yml@main
+    uses: mainio/gha-decidim-module/.github/workflows/ci_rspec.yml@next
     with:
       db-migrate: true
     secrets: inherit
