@@ -34,6 +34,10 @@ This module serves for:
 - Authorization record changes (create, update, and destroy) [Note 1, Note 2]
 - User record reads in admin panel [Note 3]
 - Authorization record reads in admin panel [Note 3]
+- User record reads in selected participant views (listed below) [Note 4]
+  * Public profile related views (including profile activities listing)
+  * Conversations views
+- Download your data export and download actions [Note 5]
 
 [Note 1] Note that if the `before_` and `after_` callbacks are omitted when
 modifying the records, the changes related to create, update, and destroy events
@@ -50,6 +54,17 @@ you need to audit any other admin view where user or authorization records are
 read, please see the initializer configurations at the engine definition of this
 module. For authorization handlers, the auditing depends on whether or not the
 admin views are performing any reads against the user or authorization records.
+
+[Note 4] The participant views user record read auditing is targeted to only
+selected views because the user details are displayed in many participant-facing
+views normally. Auditing all reads would lead to a large amount of audit logs
+and could impact the application performance. The audited actions and user
+record reads are limited to those views that are specifically related to the
+user accounts being inspected.
+
+[Note 5] With the download your data action, only the action is audited and not
+the inspected user record because the record matches always the user that
+performed the action.
 
 ## Important note
 
