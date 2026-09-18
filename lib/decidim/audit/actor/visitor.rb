@@ -44,6 +44,8 @@ module Decidim
         end
 
         def ==(other)
+          return false unless other.is_a?(self.class)
+
           [:type, :identifier, :uuid, :ip].all? { |key| public_send(key) == other.public_send(key) }
         end
 
