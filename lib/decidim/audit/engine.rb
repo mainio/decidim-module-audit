@@ -25,10 +25,53 @@ module Decidim
 
       initializer "decidim_audit.add_customizations", before: "add_routing_paths" do
         config.to_prepare do
+          # Patches 1
+          #
+          # These patches fix an issue with the asset router requesting the blob
+          # attachment's records for every request where the view displays
+          # variant URLs to any of the attached ActiveStorage assets related to
+          # the record, such as the user's avatar which is loaded in all
+          # participant-facing views (in the view header). Those displays cause
+          # the current user record to be reloaded several times during a single
+          # view through the ActiveStorage attachment's record object (i.e. the
+          # same user the attachment is attached to).
+          #
+          # For regular HTTP requests this is unnecessary as the current host is
+          # already set through `ActiveStorage::Current`.
+          #
+          # This is an issue with the audit module because this would cause the
+          # current user to be counted as an inspected user in views where the
+          # record is not actually inspected.
+          #
+          # See: https://github.com/decidim/decidim/pull/17599
+          #
+          # These patches should be removed after the related PR is merged and
+          # released. Use the "REF" below to find all related patches and fixes
+          # throughout this module.
+          #
+          # REF: decidim/decidim#17599
+          require "decidim/audit/core_patches/attached_uploader_cache"
+          require "decidim/audit/core_patches/uploader_url_cache"
+          Decidim::UserBaseEntity.include(CorePatches::AttachedUploaderCache)
+          Decidim::ImageUploader.include(CorePatches::UploaderUrlCache)
+
+          # Patches 2
+          #
+          # This patch fixes an issue in the following cell that would cause the
+          # audit logic to track all followed user records instead of only the
+          # displayed ones.
+          #
+          # See: https://github.com/decidim/decidim/pull/17700
+          #
+          # REF: decidim/decidim#17700
+          require "decidim/audit/core_patches/following_cell_fix"
+          Decidim::FollowingCell.include(CorePatches::FollowingCellFix)
+
           # Controllers
           ::Devise::SessionsController.include(SessionsControllerExtension)
           ::Devise::OmniauthCallbacksController.include(OmniauthCallbacksControllerExtension)
 
+          # Admin views auditing
           ControllerAuditUserRead.configure do
             audit_controller Decidim::Admin::UsersController, actions: :index
             audit_controller Decidim::Admin::OfficializationsController
@@ -58,6 +101,34 @@ module Decidim
           #
           # See AdminReportsControllerExtension for further information.
           Decidim::Admin::Moderations::ReportsController.include(AdminReportsControllerExtension)
+
+          # Participant views auditing
+          ControllerAuditUserRead.configure do
+            audit_controller Decidim::ProfilesController, prepend: true, channel: "users_public", events: {
+              following: :read_list,
+              followers: :read_list,
+              members: :read_list,
+              group_members: :read_list,
+              group_admins: :read_list
+            }
+            audit_controller Decidim::UserActivitiesController, channel: "users_public", events: { index: :read }
+          end
+
+          # Custom handling is needed for some of the participant views.
+          Decidim::Messaging::ConversationsController.include(ConversationsControllerExtension)
+          Decidim::DownloadYourDataController.include(DownloadYourDataControllerExtension)
+
+          # Keep this AFTER the audit definitions because otherwise it would
+          # cause the current user record to be listed in the inspected records
+          # audit entry.
+          #
+          # This can be removed after the referenced problem is resolved and
+          # available in a released version.
+          #
+          # REF: decidim/decidim#17599
+          require "decidim/audit/core_patches/force_current_user_assets_load"
+          Decidim::ProfilesController.include(CorePatches::ForceCurrentUserAssetsLoad)
+          Decidim::UserActivitiesController.include(CorePatches::ForceCurrentUserAssetsLoad)
 
           # Models
           ::Decidim::UserBaseEntity.include(Auditable)

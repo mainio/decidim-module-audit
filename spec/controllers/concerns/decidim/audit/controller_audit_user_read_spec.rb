@@ -104,8 +104,6 @@ describe "Decidim::Audit::ControllerAuditUserRead" do
     let(:request_methods) { :GET }
 
     controller do
-      around_action :wrap_request
-
       def index
         render plain: current_organization.admins.map(&:id).join(",")
       end
@@ -129,6 +127,11 @@ describe "Decidim::Audit::ControllerAuditUserRead" do
 
     before do
       described_module.audit_controller(controller.class, channel:, events:, actions:, request_methods:)
+
+      # Note that this action needs to always run first.
+      controller.class.class_eval do
+        prepend_around_action :wrap_request
+      end
 
       routes.draw do
         get "index" => "anonymous#index"

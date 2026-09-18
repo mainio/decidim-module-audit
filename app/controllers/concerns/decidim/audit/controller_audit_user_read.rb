@@ -9,17 +9,29 @@ module Decidim
         instance_exec(&)
       end
 
-      def self.audit_controller(klass, channel: nil, events: nil, actions: nil, request_methods: :GET)
+      # rubocop:disable Metrics/ParameterLists
+      def self.audit_controller(
+        klass,
+        channel: nil,
+        events: nil,
+        actions: nil,
+        request_methods: :GET,
+        prepend: false
+      )
         klass.include(self)
+        klass.instance_exec do
+          if prepend
+            prepend_around_action :audit_read, if: :audit_read?
+          else
+            around_action :audit_read, if: :audit_read?
+          end
+        end
         klass.audit_channel(channel || "users_admin")
         klass.audit_events(events)
         klass.audit_restrict_actions(actions) if actions
         klass.audit_restrict_request_methods(request_methods) if request_methods
       end
-
-      included do
-        around_action :audit_read, if: :audit_read?
-      end
+      # rubocop:enable Metrics/ParameterLists
 
       class_methods do
         def audit_channel(channel = nil)

@@ -23,6 +23,7 @@ end
 
 shared_examples "audit user read controller list" do |action_name = :index|
   let(:queried_amount_per_page) { Decidim::Paginable::OPTIONS.first }
+  let(:audit_channel) { "users_admin" }
 
   describe "##{action_name}" do
     subject { get(target_path, params: { locale: I18n.default_locale }) }
@@ -36,7 +37,7 @@ shared_examples "audit user read controller list" do |action_name = :index|
       logs = Decidim::Audit::Log.order(:id).last(2)
       expect(log_details(logs[0])).to eq(
         level: "info",
-        channel: "users_admin",
+        channel: audit_channel,
         event: action_name.to_s,
         details: { "controller" => described_class.name },
         resource: nil,
@@ -57,6 +58,8 @@ shared_examples "audit user read controller list" do |action_name = :index|
 end
 
 shared_examples "audit user read controller single" do |action_name = :show|
+  let(:audit_channel) { "users_admin" }
+
   describe "##{action_name}" do
     subject { get(target_path, params: { locale: I18n.default_locale }) }
 
@@ -69,7 +72,7 @@ shared_examples "audit user read controller single" do |action_name = :show|
       logs = Decidim::Audit::Log.order(:id).last(2)
       expect(log_details(logs[0])).to eq(
         level: "info",
-        channel: "users_admin",
+        channel: audit_channel,
         event: action_name.to_s,
         details: { "controller" => described_class.name },
         resource: nil,
