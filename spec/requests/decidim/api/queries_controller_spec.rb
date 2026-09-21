@@ -3,7 +3,16 @@
 require "spec_helper"
 
 describe Decidim::Api::QueriesController do
-  subject { post(api_path, params: { query:, variables:, operationName: operation_name }) }
+  subject do
+    post(
+      api_path,
+      params: {
+        query:,
+        variables: variables&.transform_keys { |k| k.to_s.camelcase(:lower) },
+        operationName: operation_name
+      }
+    )
+  end
 
   let(:url_helpers) { Decidim::Api::Engine.routes.url_helpers }
   let(:api_path) { url_helpers.root_path }
@@ -61,6 +70,7 @@ describe Decidim::Api::QueriesController do
 
   context "with a parse error" do
     let(:query) { %({ organization { name { translation(locale: "en) } } }) }
+    let(:variables) { nil }
 
     it "audits the query and the error" do
       expect do
@@ -79,6 +89,7 @@ describe Decidim::Api::QueriesController do
 
   context "with a validation error" do
     let(:query) { %({ organization { name } }) }
+    let(:variables) { nil }
 
     it "audits the query and the error" do
       expect do
@@ -148,6 +159,50 @@ describe Decidim::Api::QueriesController do
       expect(logs[1].event).to eq("api")
       expect(logs[1].details).to match("ids" => an_instance_of(Array))
       expect(logs[1].details["ids"]).to match_array([current_user.id] + target_users.map(&:id))
+    end
+  end
+
+  context "when querying the record author" do
+    let(:participatory_space) { create(:participatory_process, :with_steps, organization:) }
+    let(:component) { create(:proposal_component, participatory_space:) }
+    let!(:proposal) { create(:proposal, component:, users: authors) }
+    let(:authors) { create_list(:user, 3, :confirmed, organization:) }
+
+    let(:query) do
+      %(
+        query($processId: ID, $componentType: String, $proposalId: ID!) {
+          participatoryProcess(id: $processId) {
+            components(filter: { type: $componentType }) {
+              ... on Proposals {
+                proposal(id: $proposalId) {
+                  authors { id name }
+                }
+              }
+            }
+          }
+        }
+      )
+    end
+    let(:variables) do
+      {
+        process_id: participatory_space.id.to_s,
+        component_type: "proposals",
+        proposal_id: proposal.id.to_s
+      }
+    end
+
+    it "audits the user record read" do
+      expect do
+        expect(graphql_response["errors"]).to be_nil
+      end.to change(Decidim::Audit::Log, :count).by(2)
+
+      logs = Decidim::Audit::Log.order(:id).last(2)
+      expect(logs[0].channel).to eq("api_query")
+      expect(logs[1].channel).to eq("decidim_users")
+      expect(logs[1].level).to eq("info")
+      expect(logs[1].event).to eq("api")
+      expect(logs[1].details).to match("ids" => an_instance_of(Array))
+      expect(logs[1].details["ids"]).to match_array(authors.map(&:id))
     end
   end
 end
