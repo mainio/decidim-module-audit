@@ -8,6 +8,7 @@ module Decidim
   # rubocop:disable Metrics/ParameterLists
   module Audit
     autoload :Actor, "decidim/audit/actor"
+    autoload :Api, "decidim/audit/api"
     autoload :Request, "decidim/audit/request"
     autoload :Logger, "decidim/audit/logger"
     autoload :Resolver, "decidim/audit/resolver"

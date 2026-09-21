@@ -38,6 +38,8 @@ This module serves for:
   * Public profile related views (including profile activities listing)
   * Conversations views
 - Download your data export and download actions [Note 5]
+- API queries performed against the GraphQL API
+- User record reads in any API queries
 
 [Note 1] Note that if the `before_` and `after_` callbacks are omitted when
 modifying the records, the changes related to create, update, and destroy events

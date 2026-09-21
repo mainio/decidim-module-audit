@@ -143,6 +143,11 @@ module Decidim
             # destroyed.
             exclude_auditable_attributes! :metadata, :verification_metadata
           end
+
+          if Decidim.module_installed?(:api)
+            Decidim::Api::Schema.include(Api::SchemaExtension)
+            Decidim::Api::QueriesController.include(Api::QueriesControllerExtension)
+          end
         end
       end
 
