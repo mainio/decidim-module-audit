@@ -112,8 +112,8 @@ the automated tasks periodically:
 You have the following environment variables available in order to control some
 of the module's functionality:
 
-- `DECIDIM_DOWNLOAD_YOUR_DATA_EXPIRY_TIME` - The amount of days the audit logs
-  are preserved. Please note that for this to work, you have to configure the
+- `DECIDIM_AUDIT_RETENTION_PERIOD_DAYS` - The amount of days the audit logs are
+  preserved. Please note that for this to work, you have to configure the
   `decidim:audit:cleanup` rake task to run periodically.
   * Type: Integer (positive)
   * Default: `365`
