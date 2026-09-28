@@ -8,6 +8,8 @@ module Decidim
       # new records are exported.
       class Exporter
         def initialize(log_file_path, start_time: nil)
+          raise ArgumentError, "Invalid start time provided" if start_time && !start_time.is_a?(Time)
+
           @log_file_path = log_file_path
           @start_time = start_time
         end
