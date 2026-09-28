@@ -4,7 +4,8 @@ module Decidim
   module Audit
     module Logger
       # Exports new logs to the defined log path and reads the last logged
-      # record after which the
+      # record from the output file which defines cutoff position after which
+      # new records are exported.
       class Exporter
         def initialize(log_file_path, start_time: nil)
           @log_file_path = log_file_path
