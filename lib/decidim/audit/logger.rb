@@ -3,6 +3,7 @@
 module Decidim
   module Audit
     module Logger
+      autoload :Exporter, "decidim/audit/logger/exporter"
       autoload :Formatter, "decidim/audit/logger/formatter"
       autoload :HashFormatter, "decidim/audit/logger/hash_formatter"
       autoload :RecordMessageFormatter, "decidim/audit/logger/record_message_formatter"

@@ -21,75 +21,14 @@ namespace :decidim do
       end
 
       log_file_path = args.output_path || File.expand_path("#{Rails.env}_audit.log", log_dir)
-      after = 0
 
-      if File.exist?(log_file_path)
-        buffer_size = 1024
-        position = 0
-        File.open(log_file_path, "r") do |file|
-          while position >= -file.size
-            if position - buffer_size < -file.size
-              buffer_size = file.size + position
-              position = -file.size
-            else
-              position -= buffer_size
-            end
-
-            chunk = file.pread(buffer_size, file.size + position)
-
-            # Match the beginning lines of the log entries and find the last
-            # logged entry.
-            matches = chunk.scan(
-              /[INWECAF], \[[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}\] [A-Z]{4,9}[ ]{1,6} -- audit: \[([0-9]+)\]/
-            )
-            if matches.any?
-              after = matches.last[0].to_i
-              break
-            end
-
-            break if position == -file.size
-          end
-        end
-      end
-
-      audit_logs =
-        if start_time
-          Decidim::Audit::Log.where("id > ? AND created_at >= ?", after, start_time)
-        else
-          Decidim::Audit::Log.where("id > ?", after)
-        end
-      if audit_logs.none?
+      exporter = Decidim::Audit::Logger::Exporter.new(log_file_path, start_time:)
+      if exporter.export
+        puts "Exported audit logs to: #{log_file_path}"
+      else
         puts "No new logs to export."
         next
       end
-
-      File.open(log_file_path, "a") do |log_file|
-        log_file.binmode
-        log_file.sync = true # if true make sure every write flushes
-
-        logger = ActiveSupport::Logger.new(log_file, progname: "audit")
-        logger.level = Decidim::Audit::Logger::INFO
-        logger.formatter = Decidim::Audit::Logger::Formatter.new
-        logger = Decidim::Audit::Logger.new(logger)
-
-        audit_logs.order(:id).each do |log|
-          logger.identified(log.id) do
-            tags = []
-            tags << "org-#{log.decidim_organization_id}" if log.decidim_organization_id
-            tags << log.channel
-            tags << log.event
-            logger.tagged(*tags) do
-              message = Decidim::Audit::Logger::RecordMessageFormatter.new(log).format
-
-              logger.add(log.logger_level, message, time: log.created_at)
-            end
-          end
-        end
-
-        logger
-      end
-
-      puts "Exported audit logs to: #{log_file_path}"
     end
 
     desc "Cleanup old audit logs after the configured retention period"

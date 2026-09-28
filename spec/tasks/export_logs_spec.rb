@@ -33,7 +33,7 @@ describe "rake decidim:audit:export_logs", type: :task do
   let(:log_file_path) { File.expand_path("log/test_audit.log", Decidim::Dev.dummy_app_path) }
   let(:log_output) { File.read(log_file_path) }
 
-  after { FileUtils.rm_rf(log_file_path) }
+  after { FileUtils.rm_rf([log_file_path, "#{log_file_path}.1"]) }
 
   it "exports the existing log entries" do
     expect { task.execute }.not_to raise_error
@@ -51,6 +51,24 @@ describe "rake decidim:audit:export_logs", type: :task do
     it "exports only the new entries without duplicating the old entries" do
       expect { task.execute }.not_to raise_error
       expect(File.exist?(log_file_path)).to be(true)
+
+      new_log_entries
+      expect { task.execute }.not_to raise_error
+
+      expect(log_output).to eq(expected_output)
+    end
+  end
+
+  context "when there are already written log entries in a rotated log" do
+    let(:new_log_entries) { create_list(:audit_log, 5) }
+    let(:expected_log_entries) { new_log_entries }
+
+    it "exports only the new entries without duplicating the old entries" do
+      expect { task.execute }.not_to raise_error
+      expect(File.exist?(log_file_path)).to be(true)
+
+      # Rotate the existing logs
+      File.rename(log_file_path, "#{log_file_path}.1")
 
       new_log_entries
       expect { task.execute }.not_to raise_error
