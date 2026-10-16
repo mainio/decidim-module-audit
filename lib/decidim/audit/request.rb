@@ -28,6 +28,7 @@ module Decidim
           request_uuid: req.uuid,
           request_method: req.request_method,
           request_path: req.path,
+          request_referer: req.referer,
           ip: req.ip,
           remote_ip: req.remote_ip,
           user_agent: req.get_header("HTTP_USER_AGENT"),

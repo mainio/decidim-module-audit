@@ -17,6 +17,7 @@ describe "Session" do
       "REMOTE_ADDR" => "10.0.0.1",
       "HTTP_CLIENT_IP" => "1.2.3.4",
       "HTTP_USER_AGENT" => "RSpec testing",
+      "HTTP_REFERER" => "http://#{organization.host}#{Decidim::Core::Engine.routes.url_helpers.root_path}",
       "HTTP_SEC_CH_UA" => %("Not;A=Brand";v="1", "SomeBrand";v="2"),
       "HTTP_SEC_CH_UA_MOBILE" => "?0",
       "HTTP_SEC_CH_UA_PLATFORM" => %("Linux")

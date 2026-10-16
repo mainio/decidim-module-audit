@@ -211,6 +211,7 @@ describe Decidim::Audit do
             uuid: request_uuid,
             request_method:,
             path: request_path,
+            referer: request_referer,
             ip:,
             remote_ip:
           )
@@ -219,6 +220,7 @@ describe Decidim::Audit do
         let(:request_uuid) { "00000000-1111-2222-3333-44444444444" }
         let(:request_method) { "POST" }
         let(:request_path) { "/path" }
+        let(:request_referer) { "https://www.example.org/referer" }
         let(:ip) { "10.0.0.1" }
         let(:remote_ip) { "1.2.3.4" }
         let(:request_headers) do
@@ -256,6 +258,7 @@ describe Decidim::Audit do
             "request_uuid" => request_uuid,
             "request_method" => request_method,
             "request_path" => request_path,
+            "request_referer" => request_referer,
             "ip" => ip,
             "remote_ip" => remote_ip,
             "user_agent" => request_headers["HTTP_USER_AGENT"],

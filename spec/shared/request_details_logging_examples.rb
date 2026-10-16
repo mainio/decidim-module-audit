@@ -9,6 +9,7 @@ shared_examples "request details logging" do |channel:, event:|
     expect(log.request_details.except("request_id", "request_uuid")).to match(
       "request_method" => expected_method,
       "request_path" => expected_path,
+      "request_referer" => request_headers["HTTP_REFERER"],
       "ip" => request_headers["REMOTE_ADDR"],
       "remote_ip" => request_headers["HTTP_CLIENT_IP"],
       "user_agent" => request_headers["HTTP_USER_AGENT"],
