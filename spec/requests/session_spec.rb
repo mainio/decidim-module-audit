@@ -210,16 +210,25 @@ describe "Session" do
         get(response.headers["Location"])
         expect(response).to have_http_status(:found)
         expect(response).to redirect_to(redirect_path)
-      end.to change(Decidim::Audit::Log, :count).by(1)
+      end.not_to change(Decidim::Audit::Log, :count)
+    end
+  end
 
-      log = Decidim::Audit::Log.order(:id).last
-      expect(log.channel).to eq("authentication")
-      expect(log.level).to eq("notice")
-      expect(log.event).to eq("failure")
-      expect(log.details["scope"]).to eq("user")
-      expect(log.details["action"]).to eq("unauthenticated")
-      expect(logs[1].actor_type).to eq("visitor")
-      expect(logs[1].actor).to be_a(Decidim::Audit::Actor::Visitor)
+  context "when requesting unexisting admin path as an unauthenticated user" do
+    let(:target_path) { Decidim::Admin::Engine.routes.url_helpers.root_path.concat("unexisting-path") }
+    let(:redirect_path) { Decidim::Core::Engine.routes.url_helpers.new_user_session_path }
+
+    # This would fill up the logs as scraper bots are looking for common URLs
+    # to attempt to break into the system. They are not attempting login when
+    # requesting these URLs, they are only redirected to the login page when
+    # this happens.
+    it "does not log authentication failure" do
+      expect do
+        get(target_path, params: { locale: I18n.default_locale }, headers: { "HOST" => organization.host })
+        expect(response).to have_http_status(:found)
+      end.not_to change(Decidim::Audit::Log, :count)
+
+      expect(response).to redirect_to(redirect_path)
     end
   end
 

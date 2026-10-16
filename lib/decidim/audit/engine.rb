@@ -67,6 +67,18 @@ module Decidim
           require "decidim/audit/core_patches/following_cell_fix"
           Decidim::FollowingCell.include(CorePatches::FollowingCellFix)
 
+          # Patches 3
+          #
+          # This patch adds an option for the unauthenticated failure app call
+          # and the before_failure hook in order to separate unauthenticated
+          # admin requests from actual authentication failures.
+          #
+          # See: https://github.com/decidim/decidim/pull/17889
+          #
+          # REF: decidim/decidim#17889
+          require "decidim/audit/core_patches/organization_dashboard_constraint_fix"
+          Decidim::Admin::OrganizationDashboardConstraint.include(CorePatches::OrganizationDashboardConstraintFix)
+
           # Controllers
           ::Devise::SessionsController.include(SessionsControllerExtension)
           ::Devise::OmniauthCallbacksController.include(OmniauthCallbacksControllerExtension)

@@ -12,6 +12,8 @@ Warden::Manager.after_authentication do |record, _warden, options|
 end
 
 Warden::Manager.before_failure do |env, options|
+  next if options[:context] == :admin_constraint
+
   scope = options[:scope]
   message = options[:message]
   action = options[:action]
